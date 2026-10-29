@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-os-service-config
+  namespace: oficina
+data:
+  PORT: "3000"
+  NODE_ENV: "production"
+  SEED_DATA: "false"
+  LOG_LEVEL: "info"
+  # RUN_MIGRATIONS_ON_BOOT=false: migrations rodam via Job dedicado
+  # (02-migrate-job.tpl.yaml), nao a cada Pod do Deployment subindo.
+  RUN_MIGRATIONS_ON_BOOT: "false"
+  # Endpoint da RDS (Repositorio 1 - oficina-db-infrastructure). Este
+  # servico usa um database proprio ("os_service") na MESMA instancia,
+  # nao a instancia inteira compartilhada com outros servicos.
+  DB_HOST: "${db_host}"
+  DB_PORT: "${db_port}"
+  DB_NAME: "${db_name}"
+  # Saga (oficina-messaging-infra) - SNS FIFO unico + fila SQS deste servico.
+  SAGA_TOPIC_ARN: "${saga_topic_arn}"
+  SAGA_QUEUE_URL: "${saga_queue_url}"
+  AWS_REGION: "${aws_region}"

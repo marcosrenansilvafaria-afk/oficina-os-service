@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// Enums (espelham os tipos do domínio)
+// ─────────────────────────────────────────────
+
+enum StatusOrdemServico {
+  RECEBIDA
+  EM_DIAGNOSTICO
+  AGUARDANDO_APROVACAO
+  APROVADA
+  EM_EXECUCAO
+  FINALIZADA
+  ENTREGUE
+  CANCELADA
+}
+
+enum TipoItem {
+  SERVICO
+  PECA
+}
+
+// ─────────────────────────────────────────────
+// Modelos
+// ─────────────────────────────────────────────
+
+model Cliente {
+  id        String         @id @default(uuid())
+  nome      String
+  documento String         @unique
+  ordens    OrdemServico[]
+
+  @@map("clientes")
+}
+
+model Veiculo {
+  id     String         @id @default(uuid())
+  placa  String         @unique
+  modelo String
+  marca  String
+  ano    Int
+  ordens OrdemServico[]
+
+  @@map("veiculos")
+}
+
+model Servico {
+  id    String @id @default(uuid())
+  nome  String
+  preco Float
+
+  @@map("servicos")
+}
+
+model Peca {
+  id      String @id @default(uuid())
+  nome    String
+  preco   Float
+  estoque Int    @default(0)
+
+  @@map("pecas")
+}
+
+model OrdemServico {
+  id           String             @id @default(uuid())
+  clienteId    String
+  veiculoId    String
+  status       StatusOrdemServico @default(RECEBIDA)
+  valorTotal   Float              @default(0)
+  criadaEm     DateTime           @default(now())
+  finalizadaEm DateTime?
+
+  cliente   Cliente                     @relation(fields: [clienteId], references: [id])
+  veiculo   Veiculo                     @relation(fields: [veiculoId], references: [id])
+  itens     ItemOrdemServico[]
+  historico OrdemServicoStatusHistorico[]
+
+  @@map("ordens_servico")
+}
+
+// Registra cada transicao de status da OS, usado para calcular o tempo medio
+// de execucao POR STATUS (dashboard de observabilidade, Repositorio 4). O
+// modelo original so tinha criadaEm/finalizadaEm, que so permitem medir o
+// tempo total da ordem, nao a duracao de cada etapa individual.
+model OrdemServicoStatusHistorico {
+  id             String             @id @default(uuid())
+  ordemServicoId String
+  status         StatusOrdemServico
+  alteradoEm     DateTime           @default(now())
+
+  ordemServico OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+
+  @@index([ordemServicoId])
+  @@index([status])
+  @@map("ordens_servico_status_historico")
+}
+
+model ItemOrdemServico {
+  id             String       @id @default(uuid())
+  ordemServicoId String
+  tipo           TipoItem
+  descricao      String
+  preco          Float
+  quantidade     Int
+
+  ordemServico OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+
+  @@map("itens_ordem_servico")
+}

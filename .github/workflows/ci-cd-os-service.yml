@@ -1,0 +1,202 @@
+name: CI/CD OS Service
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: "20"
+  AWS_REGION: "us-east-1"
+  EKS_CLUSTER_NAME: "oficina-eks-development"
+
+jobs:
+  lint-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (NestJS)
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Critical coverage gate (>= 80%)
+        run: npm run test:cov:critical
+
+      - name: BDD (ciclo de vida da OS via Saga)
+        run: npm run test:bdd
+
+  sonarqube:
+    name: SonarQube Scan
+    needs: lint-test
+    runs-on: ubuntu-latest
+    # Pendencia: ainda nao existe conta SonarCloud/servidor SonarQube para
+    # este projeto (ver README). O job so roda quando o secret SONAR_TOKEN
+    # existir - ate la, aparece como "skipped", nao "failed".
+    if: ${{ vars.SONAR_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Coverage (para o SonarQube consumir)
+        run: npm run test:cov:critical
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  docker-build-push:
+    name: Docker Build & Push (GHCR)
+    needs: lint-test
+    runs-on: ubuntu-latest
+    outputs:
+      short-sha: ${{ steps.sha.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        id: sha
+        run: echo "value=$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy no EKS (Repositorio 3)
+    needs: docker-build-push
+    # Pendencia: o cluster EKS (Repositorio 3) foi destruido ao final da
+    # Fase 3 para evitar custo ocioso. Este job so roda quando a variavel
+    # de repositorio EKS_DEPLOY_ENABLED existir e for "true" - ate o
+    # cluster ser recriado, aparece como "skipped", nao "failed".
+    if: ${{ github.event_name != 'pull_request' && vars.EKS_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig (cluster do Repositorio 3)
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Verificar namespace
+        run: kubectl get namespace oficina
+
+      - name: Aplicar ConfigMap (com endpoint do RDS e do Saga)
+        env:
+          db_host: ${{ secrets.DB_HOST }}
+          db_port: ${{ secrets.DB_PORT }}
+          db_name: ${{ secrets.DB_NAME }}
+          saga_topic_arn: ${{ secrets.SAGA_TOPIC_ARN }}
+          saga_queue_url: ${{ secrets.SAGA_QUEUE_URL }}
+          aws_region: ${{ env.AWS_REGION }}
+        run: envsubst < k8s/01-configmap.yaml | kubectl apply -f -
+
+      - name: Aplicar Secret (credenciais)
+        env:
+          database_url: ${{ secrets.DATABASE_URL }}
+          jwt_secret: ${{ secrets.JWT_SECRET }}
+        run: envsubst < k8s/01-secret.tpl.yaml | kubectl apply -f -
+
+      - name: Aplicar Job de migrations
+        env:
+          image_registry: "${{ env.REGISTRY }}/"
+          image_tag: "sha-${{ needs.docker-build-push.outputs.short-sha }}"
+          image_pull_policy: "IfNotPresent"
+        run: |
+          IMAGE_REGISTRY_LOWER=$(echo "${image_registry}${{ github.repository_owner }}/" | tr '[:upper:]' '[:lower:]')
+          kubectl delete job/prisma-migrate-os-service -n oficina --ignore-not-found
+          image_registry="$IMAGE_REGISTRY_LOWER" envsubst < k8s/02-migrate-job.tpl.yaml | kubectl apply -f -
+          kubectl wait --for=condition=complete job/prisma-migrate-os-service -n oficina --timeout=300s \
+            || { echo "=== Job status ==="; kubectl describe job/prisma-migrate-os-service -n oficina; \
+                 echo "=== Pod logs ==="; kubectl logs -l job-name=prisma-migrate-os-service -n oficina --tail=50; \
+                 exit 1; }
+
+      - name: Aplicar Deployment, Service e HPA
+        env:
+          image_registry: "${{ env.REGISTRY }}/"
+          image_tag: "sha-${{ needs.docker-build-push.outputs.short-sha }}"
+          image_pull_policy: "IfNotPresent"
+        run: |
+          IMAGE_REGISTRY_LOWER=$(echo "${image_registry}${{ github.repository_owner }}/" | tr '[:upper:]' '[:lower:]')
+          image_registry="$IMAGE_REGISTRY_LOWER" envsubst < k8s/02-deployment.tpl.yaml | kubectl apply -f -
+          kubectl apply -f k8s/02-service-clusterip.yaml
+          kubectl apply -f k8s/02-hpa.yaml
+
+      - name: Aguardar rollout do OS Service
+        run: kubectl rollout status deployment/oficina-os-service -n oficina --timeout=180s
+
+      - name: Verificar HPA
+        run: kubectl get hpa -n oficina

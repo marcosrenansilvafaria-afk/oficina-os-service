@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oficina FIAP — Demo Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-gray-900">
+
+<!-- HEADER -->
+<header class="bg-blue-900 text-white px-6 py-4 flex items-center gap-3 shadow-lg sticky top-0 z-50">
+  <span class="text-3xl select-none">🔧</span>
+  <div>
+    <h1 class="text-lg font-bold leading-tight">Oficina FIAP</h1>
+    <p class="text-blue-300 text-xs">Demo Dashboard · Tech Challenge Fase 2</p>
+  </div>
+  <div class="ml-auto flex items-center gap-3">
+    <a href="/docs" target="_blank"
+       class="text-xs text-blue-300 hover:text-white underline underline-offset-2 transition">
+      Swagger ↗
+    </a>
+    <span id="auth-badge"
+          class="text-xs px-3 py-1 rounded-full font-medium bg-red-700 text-red-100 transition-all">
+      Não autenticado
+    </span>
+  </div>
+</header>
+
+<div class="max-w-4xl mx-auto p-4 space-y-4">
+
+  <!-- ── LOGIN ─────────────────────────────────────── -->
+  <section class="bg-white rounded-2xl shadow p-4">
+    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">🔐 Autenticação</h2>
+    <div class="flex flex-wrap gap-2 items-center">
+      <input id="inp-email" type="email" value="admin@oficina.com" placeholder="Email"
+        class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px] focus:outline-none focus:ring-2 focus:ring-blue-300"
+        onkeydown="if(event.key==='Enter') document.getElementById('inp-senha').focus()" />
+      <input id="inp-senha" type="password" value="admin123" placeholder="Senha"
+        class="border rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        onkeydown="if(event.key==='Enter') doLogin()" />
+      <button onclick="doLogin()"
+        class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 active:scale-95 transition">
+        Entrar
+      </button>
+      <div class="flex gap-1 border-l pl-2">
+        <button onclick="quickLogin('admin@oficina.com','admin123')"
+          class="px-2.5 py-1 rounded text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-medium">
+          Admin
+        </button>
+        <button onclick="quickLogin('atendente@oficina.com','atendente123')"
+          class="px-2.5 py-1 rounded text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+          Atendente
+        </button>
+        <button onclick="quickLogin('mecanico@oficina.com','mecanico123')"
+          class="px-2.5 py-1 rounded text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+          Mecânico
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SEARCH + CREATE ───────────────────────────── -->
+  <div class="grid md:grid-cols-2 gap-4">
+
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">🔍 Buscar OS</h2>
+      <div class="flex gap-2 mb-3">
+        <input id="inp-os-id" type="text" placeholder="ID da OS..."
+          class="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          onkeydown="if(event.key==='Enter') buscarOS()" />
+        <button onclick="buscarOS()"
+          class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 active:scale-95 transition">
+          Buscar
+        </button>
+      </div>
+      <div id="os-chips" class="flex flex-wrap gap-1.5">
+        <span class="text-gray-300 text-xs italic">Faça login para ver OS ativas</span>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">➕ Nova OS</h2>
+      <div class="space-y-2">
+        <input id="inp-cli" type="text" value="cli-001" placeholder="ID do Cliente"
+          class="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-300" />
+        <input id="inp-vei" type="text" value="vei-001" placeholder="ID do Veículo"
+          class="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-300" />
+        <button onclick="criarOS()"
+          class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium w-full hover:bg-green-800 active:scale-95 transition">
+          Criar Ordem de Serviço
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ── OS DETAIL ─────────────────────────────────── -->
+  <section id="os-detail" class="hidden bg-white rounded-2xl shadow p-5 space-y-4">
+
+    <!-- Header row -->
+    <div class="flex items-start justify-between">
+      <div>
+        <h2 id="det-id" class="text-lg font-bold text-gray-800 font-mono">OS —</h2>
+        <p id="det-dates" class="text-gray-400 text-xs mt-0.5">—</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="det-badge" class="px-3 py-1 rounded-full text-sm font-semibold">—</span>
+        <button onclick="refreshOS()" title="Atualizar"
+          class="text-gray-400 hover:text-gray-700 text-xl leading-none transition select-none">
+          ↻
+        </button>
+      </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="overflow-x-auto pb-1">
+      <div id="timeline" class="min-w-max"></div>
+    </div>
+
+    <!-- Info cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-gray-400 text-xs mb-1">Valor Total</p>
+        <p id="det-valor" class="font-bold text-gray-800">R$ 0,00</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-gray-400 text-xs mb-1">Itens</p>
+        <p id="det-itens" class="font-bold text-gray-800">0</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-gray-400 text-xs mb-1">Cliente</p>
+        <p id="det-cliente" class="font-bold text-gray-800 truncate">—</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-gray-400 text-xs mb-1">Veículo</p>
+        <p id="det-veiculo" class="font-bold text-gray-800 truncate">—</p>
+      </div>
+    </div>
+
+    <!-- Add item (only in EM_DIAGNOSTICO) -->
+    <div id="add-item" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <p class="text-xs font-semibold text-amber-700 uppercase tracking-widest mb-2">Adicionar Item</p>
+      <div class="flex flex-wrap gap-2 items-end">
+        <div>
+          <label class="text-xs text-amber-600 block mb-1">Tipo</label>
+          <select id="item-tipo" class="border rounded-lg px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-amber-300 focus:outline-none"
+            onchange="document.getElementById('item-ref').value = this.value === 'SERVICO' ? 'srv-001' : 'pec-001'">
+            <option value="SERVICO">Serviço</option>
+            <option value="PECA">Peça</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-amber-600 block mb-1">ID Referência</label>
+          <input id="item-ref" type="text" value="srv-001"
+            class="border rounded-lg px-2 py-1.5 text-sm w-28 focus:outline-none focus:ring-1 focus:ring-amber-300" />
+        </div>
+        <div>
+          <label class="text-xs text-amber-600 block mb-1">Qtd.</label>
+          <input id="item-qtd" type="number" value="1" min="1"
+            class="border rounded-lg px-2 py-1.5 text-sm w-16 focus:outline-none focus:ring-1 focus:ring-amber-300" />
+        </div>
+        <button onclick="adicionarItem()"
+          class="bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-amber-700 active:scale-95 transition">
+          + Adicionar
+        </button>
+      </div>
+    </div>
+
+    <!-- Context actions -->
+    <div id="action-btns" class="flex flex-wrap gap-2"></div>
+
+    <!-- WEBHOOK SECTION (AGUARDANDO_APROVACAO) -->
+    <div id="webhook-section" class="hidden bg-orange-50 border border-orange-200 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xl">📩</span>
+        <p class="font-semibold text-orange-800">Webhook — Resposta do Cliente</p>
+        <span class="ml-auto text-xs bg-orange-200 text-orange-700 px-2 py-0.5 rounded-full font-medium">RF-OS-11</span>
+      </div>
+      <p class="text-orange-600 text-xs mb-4">
+        Simula a notificação do cliente externo ao sistema.
+        <strong>Não requer autenticação JWT</strong> — é um endpoint público de webhook.
+      </p>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="webhookOrcamento(true)"
+          class="bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 active:scale-95 transition flex items-center justify-center gap-2">
+          <span class="text-xl">👍</span> Aprovar Orçamento
+        </button>
+        <button onclick="webhookOrcamento(false)"
+          class="bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 active:scale-95 transition flex items-center justify-center gap-2">
+          <span class="text-xl">👎</span> Recusar Orçamento
+        </button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── LOG PANEL ─────────────────────────────────── -->
+  <section class="bg-gray-900 rounded-2xl shadow p-4">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-gray-400 text-sm font-medium">📋 Log de chamadas</span>
+      <button onclick="clearLog()" class="text-gray-600 text-xs hover:text-gray-400 transition">limpar</button>
+    </div>
+    <div id="log" class="space-y-0.5 max-h-56 overflow-y-auto font-mono text-xs"></div>
+    <p id="log-empty" class="text-gray-600 text-xs italic">Nenhuma chamada ainda.</p>
+  </section>
+
+</div><!-- /max-w -->
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+
+const STATUSES = [
+  { key: 'RECEBIDA',            label: 'Recebida',         icon: '📋' },
+  { key: 'EM_DIAGNOSTICO',      label: 'Diagnóstico',      icon: '🔍' },
+  { key: 'AGUARDANDO_APROVACAO',label: 'Ag. Aprovação',    icon: '⏳' },
+  { key: 'APROVADA',            label: 'Aprovada',         icon: '✅' },
+  { key: 'EM_EXECUCAO',         label: 'Em Execução',      icon: '🔧' },
+  { key: 'FINALIZADA',          label: 'Finalizada',       icon: '🎉' },
+  { key: 'ENTREGUE',            label: 'Entregue',         icon: '🚗' },
+];
+
+const STATUS_LABEL = {
+  RECEBIDA: 'Recebida', EM_DIAGNOSTICO: 'Em Diagnóstico',
+  AGUARDANDO_APROVACAO: 'Ag. Aprovação', APROVADA: 'Aprovada',
+  EM_EXECUCAO: 'Em Execução', FINALIZADA: 'Finalizada', ENTREGUE: 'Entregue',
+};
+
+const STATUS_BADGE = {
+  RECEBIDA:             'bg-blue-100 text-blue-800',
+  EM_DIAGNOSTICO:       'bg-amber-100 text-amber-800',
+  AGUARDANDO_APROVACAO: 'bg-orange-100 text-orange-800',
+  APROVADA:             'bg-green-100 text-green-800',
+  EM_EXECUCAO:          'bg-purple-100 text-purple-800',
+  FINALIZADA:           'bg-indigo-100 text-indigo-800',
+  ENTREGUE:             'bg-slate-100 text-slate-800',
+};
+
+const ACTION_MAP = {
+  RECEBIDA:             [{ label: '🔍 Iniciar Diagnóstico', fn: 'doIniciarDiagnostico', cls: 'bg-blue-600 hover:bg-blue-700' }],
+  EM_DIAGNOSTICO:       [{ label: '💰 Gerar Orçamento',     fn: 'doGerarOrcamento',     cls: 'bg-indigo-600 hover:bg-indigo-700' }],
+  AGUARDANDO_APROVACAO: [{ label: '📤 Enviar Orçamento',    fn: 'doEnviarOrcamento',    cls: 'bg-yellow-600 hover:bg-yellow-700' }],
+  APROVADA:             [{ label: '⚙️ Iniciar Execução',   fn: 'doExecutar',            cls: 'bg-purple-600 hover:bg-purple-700' }],
+  EM_EXECUCAO:          [{ label: '✅ Finalizar OS',        fn: 'doFinalizar',           cls: 'bg-orange-600 hover:bg-orange-700' }],
+  FINALIZADA:           [{ label: '🚗 Entregar Veículo',   fn: 'doEntregar',            cls: 'bg-green-600 hover:bg-green-700' }],
+  ENTREGUE:             [],
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+let authToken  = null;
+let currentOsId = null;
+
+// ─── API HELPER ──────────────────────────────────────────────────────────────
+
+async function api(method, path, body, skipAuth) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken && !skipAuth) headers['Authorization'] = 'Bearer ' + authToken;
+
+  let res;
+  try {
+    res = await fetch(path, {
+      method,
+      headers,
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    addLog(method + ' ' + path, 'err', 0, { error: 'Conexão recusada' });
+    throw e;
+  }
+
+  let data;
+  try { data = await res.json(); } catch { data = null; }
+
+  addLog(method + ' ' + path, res.ok ? 'ok' : 'err', res.status, data);
+  if (!res.ok) throw data;
+  return data;
+}
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+
+async function doLogin() {
+  const email = document.getElementById('inp-email').value.trim();
+  const senha = document.getElementById('inp-senha').value.trim();
+  try {
+    const r = await api('POST', '/auth/login', { email, senha }, true);
+    authToken = r.access_token;
+    const badge = document.getElementById('auth-badge');
+    badge.textContent = '✅ ' + email;
+    badge.className = 'text-xs px-3 py-1 rounded-full font-medium bg-green-700 text-green-100 transition-all';
+    listarOS();
+  } catch (e) {
+    const badge = document.getElementById('auth-badge');
+    badge.textContent = '❌ Falha no login';
+    badge.className = 'text-xs px-3 py-1 rounded-full font-medium bg-red-700 text-red-100 transition-all';
+  }
+}
+
+function quickLogin(email, senha) {
+  document.getElementById('inp-email').value = email;
+  document.getElementById('inp-senha').value = senha;
+  doLogin();
+}
+
+// ─── OS OPERATIONS ───────────────────────────────────────────────────────────
+
+async function listarOS() {
+  try {
+    const list = await api('GET', '/os');
+    const chips = document.getElementById('os-chips');
+    chips.innerHTML = '';
+    if (!list || !list.length) {
+      chips.innerHTML = '<span class="text-gray-400 text-xs italic">Nenhuma OS ativa</span>';
+      return;
+    }
+    list.forEach(function(os) {
+      const btn = document.createElement('button');
+      const badgeCls = STATUS_BADGE[os.status] || 'bg-gray-100 text-gray-600';
+      btn.className = 'px-2.5 py-0.5 rounded-full text-xs border font-mono ' + badgeCls + ' hover:opacity-75 transition cursor-pointer';
+      btn.textContent = os.id.slice(0, 8) + '…';
+      btn.title = os.id + ' — ' + (STATUS_LABEL[os.status] || os.status);
+      btn.onclick = function() {
+        document.getElementById('inp-os-id').value = os.id;
+        renderOS(os);
+      };
+      chips.appendChild(btn);
+    });
+  } catch (e) { /* silencioso */ }
+}
+
+async function buscarOS() {
+  const id = document.getElementById('inp-os-id').value.trim();
+  if (!id) return;
+  currentOsId = id;
+  try {
+    const os = await api('GET', '/os/' + id);
+    renderOS(os);
+  } catch (e) { /* já logado */ }
+}
+
+async function criarOS() {
+  const clienteId = document.getElementById('inp-cli').value.trim();
+  const veiculoId = document.getElementById('inp-vei').value.trim();
+  try {
+    const os = await api('POST', '/os', { clienteId: clienteId, veiculoId: veiculoId });
+    currentOsId = os.id;
+    document.getElementById('inp-os-id').value = os.id;
+    renderOS(os);
+    listarOS();
+  } catch (e) { /* já logado */ }
+}
+
+async function refreshOS() {
+  if (!currentOsId) return;
+  try {
+    const os = await api('GET', '/os/' + currentOsId);
+    renderOS(os);
+  } catch (e) { /* já logado */ }
+}
+
+// ─── ACTION HANDLERS ─────────────────────────────────────────────────────────
+
+async function doIniciarDiagnostico() {
+  try { await api('POST', '/os/' + currentOsId + '/diagnostico'); await refreshOS(); } catch(e) {}
+}
+async function adicionarItem() {
+  var tipo       = document.getElementById('item-tipo').value;
+  var idRef      = document.getElementById('item-ref').value.trim();
+  var quantidade = parseInt(document.getElementById('item-qtd').value, 10);
+  var body = { tipo: tipo, quantidade: quantidade };
+  if (tipo === 'SERVICO') body.servicoId = idRef;
+  else body.pecaId = idRef;
+  try { await api('POST', '/os/' + currentOsId + '/item', body); await refreshOS(); } catch(e) {}
+}
+async function doGerarOrcamento() {
+  try { await api('POST', '/os/' + currentOsId + '/orcamento'); await refreshOS(); } catch(e) {}
+}
+async function doEnviarOrcamento() {
+  try { await api('POST', '/os/' + currentOsId + '/enviar-orcamento'); await refreshOS(); } catch(e) {}
+}
+async function webhookOrcamento(aprovado) {
+  try {
+    await api('POST', '/os/' + currentOsId + '/orcamento/webhook', { aprovado: aprovado }, true);
+    await refreshOS();
+    listarOS();
+  } catch(e) {}
+}
+async function doExecutar() {
+  try { await api('POST', '/os/' + currentOsId + '/executar'); await refreshOS(); } catch(e) {}
+}
+async function doFinalizar() {
+  try { await api('POST', '/os/' + currentOsId + '/finalizar'); await refreshOS(); listarOS(); } catch(e) {}
+}
+async function doEntregar() {
+  try { await api('POST', '/os/' + currentOsId + '/entregar'); await refreshOS(); listarOS(); } catch(e) {}
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+
+function renderOS(os) {
+  currentOsId = os.id;
+
+  document.getElementById('os-detail').classList.remove('hidden');
+
+  // Header
+  document.getElementById('det-id').textContent = 'OS ' + os.id;
+  var criadaEm = os.criadaEm ? new Date(os.criadaEm).toLocaleString('pt-BR') : '—';
+  document.getElementById('det-dates').textContent = 'Criada em: ' + criadaEm;
+
+  // Badge
+  var status = os.status;
+  var badge  = document.getElementById('det-badge');
+  badge.textContent = STATUS_LABEL[status] || status;
+  badge.className   = 'px-3 py-1 rounded-full text-sm font-semibold ' + (STATUS_BADGE[status] || 'bg-gray-100 text-gray-700');
+
+  // Info cards
+  var valor = (os.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  document.getElementById('det-valor').textContent   = 'R$ ' + valor;
+  document.getElementById('det-itens').textContent   = (os.itens || []).length;
+  document.getElementById('det-cliente').textContent = os.clienteId || '—';
+  document.getElementById('det-veiculo').textContent = os.veiculoId || '—';
+
+  renderTimeline(status);
+  renderActions(status);
+
+  document.getElementById('os-detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderTimeline(currentStatus) {
+  var idx = STATUSES.findIndex(function(s) { return s.key === currentStatus; });
+
+  // Build two rows in a grid: [circle connector circle ...] then [label _ label ...]
+  var cols    = STATUSES.length * 2 - 1; // 13 for 7 steps
+  var circles = '';
+  var labels  = '';
+
+  STATUSES.forEach(function(s, i) {
+    var past    = i < idx;
+    var current = i === idx;
+
+    var circleCls;
+    if (current) {
+      circleCls = 'w-10 h-10 rounded-full flex items-center justify-center text-lg bg-blue-600 text-white ring-4 ring-blue-200 shadow-md';
+    } else if (past) {
+      circleCls = 'w-8 h-8 rounded-full flex items-center justify-center text-sm bg-blue-200 text-blue-700';
+    } else {
+      circleCls = 'w-8 h-8 rounded-full flex items-center justify-center text-sm bg-gray-100 text-gray-400';
+    }
+
+    var labelCls = current ? 'text-blue-700 font-semibold' : past ? 'text-gray-500' : 'text-gray-300';
+
+    circles += '<div class="flex items-center justify-center py-1"><div class="' + circleCls + '">' + s.icon + '</div></div>';
+    labels  += '<div class="flex items-start justify-center"><p class="text-xs text-center leading-tight ' + labelCls + '">' + s.label + '</p></div>';
+
+    if (i < STATUSES.length - 1) {
+      var lineCls = past ? 'bg-blue-300' : 'bg-gray-200';
+      circles += '<div class="flex items-center px-1"><div class="h-0.5 w-full ' + lineCls + '"></div></div>';
+      labels  += '<div></div>'; // spacer for connector column
+    }
+  });
+
+  document.getElementById('timeline').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr)">' +
+      circles + labels +
+    '</div>';
+}
+
+function renderActions(status) {
+  // Context action buttons
+  var container = document.getElementById('action-btns');
+  container.innerHTML = '';
+  var actions = ACTION_MAP[status] || [];
+  actions.forEach(function(a) {
+    var btn = document.createElement('button');
+    btn.className = a.cls + ' text-white px-5 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition';
+    btn.textContent = a.label;
+    btn.onclick = function() { window[a.fn](); };
+    container.appendChild(btn);
+  });
+
+  // "Adicionar item" panel
+  document.getElementById('add-item').classList.toggle('hidden', status !== 'EM_DIAGNOSTICO');
+
+  // Webhook section
+  document.getElementById('webhook-section').classList.toggle('hidden', status !== 'AGUARDANDO_APROVACAO');
+
+  // Completion message
+  if (status === 'ENTREGUE') {
+    var msg = document.createElement('div');
+    msg.className = 'flex items-center gap-3 text-green-700 bg-green-50 border border-green-200 px-4 py-3 rounded-xl w-full text-sm font-medium';
+    msg.innerHTML = '<span class="text-2xl">🎊</span> OS concluída com sucesso! Veículo entregue ao cliente.';
+    container.appendChild(msg);
+  }
+}
+
+// ─── LOG ─────────────────────────────────────────────────────────────────────
+
+function addLog(label, type, status, data) {
+  document.getElementById('log-empty').classList.add('hidden');
+  var el    = document.getElementById('log');
+  var entry = document.createElement('div');
+  var color = type === 'ok' ? 'text-green-400' : 'text-red-400';
+  var statusStr = status ? '[' + status + '] ' : '';
+
+  var body = '';
+  if (data != null) {
+    try {
+      body = JSON.stringify(data);
+      if (body.length > 140) body = body.slice(0, 140) + '…';
+    } catch(e) { body = String(data); }
+  }
+
+  var time = new Date().toLocaleTimeString('pt-BR');
+  entry.className = 'py-0.5 border-b border-gray-800';
+  entry.innerHTML =
+    '<span class="text-gray-500">' + time + '</span> ' +
+    '<span class="' + color + '">' + statusStr + '</span>' +
+    '<span class="text-gray-300">' + label + '</span>' +
+    (body ? '<br><span class="text-gray-500 pl-2">↳ ' + body + '</span>' : '');
+
+  el.prepend(entry);
+  while (el.children.length > 60) el.lastChild.remove();
+}
+
+function clearLog() {
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('log-empty').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

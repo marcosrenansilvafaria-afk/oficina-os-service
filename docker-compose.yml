@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oficina_os_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-oficina}
+      POSTGRES_PASSWORD: ${DB_PASS:-oficina123}
+      POSTGRES_DB: ${DB_NAME:-oficina_os_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_os_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-oficina} -d ${DB_NAME:-oficina_os_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oficina_os_service
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-oficina}:${DB_PASS:-oficina123}@postgres:5432/${DB_NAME:-oficina_os_db}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      PORT: ${PORT:-3000}
+      SEED_DATA: ${SEED_DATA:-false}
+      # Sem topico/fila configurados localmente: publisher fica no-op e o
+      # consumidor do Saga fica desabilitado (ver infraestructure/saga/).
+      SAGA_TOPIC_ARN: ${SAGA_TOPIC_ARN:-}
+      SAGA_QUEUE_URL: ${SAGA_QUEUE_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # migrations are applied automatically by docker-entrypoint.sh before the API starts
+
+volumes:
+  postgres_os_data:

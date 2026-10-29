@@ -1,0 +1,14 @@
+node_modules
+dist
+*.tsbuildinfo
+.git
+.gitignore
+.env
+.env.*
+generated
+coverage
+test
+infra
+k8s
+.github
+*.md
