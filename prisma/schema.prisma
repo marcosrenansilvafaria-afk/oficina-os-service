@@ -72,17 +72,22 @@ model Peca {
   @@map("pecas")
 }
 
+// clienteId/veiculoId sao opcionais: a OS pode ser aberta (ex. diagnostico
+// inicial) antes do cliente/veiculo estarem cadastrados no sistema - o
+// dominio (OrdemServico, CriarOrdemServicoDto) ja trata ambos como
+// opcionais desde a criacao do servico; o schema so nao refletia isso
+// ainda (nunca testado contra Postgres real antes da Sprint 5).
 model OrdemServico {
   id           String             @id @default(uuid())
-  clienteId    String
-  veiculoId    String
+  clienteId    String?
+  veiculoId    String?
   status       StatusOrdemServico @default(RECEBIDA)
   valorTotal   Float              @default(0)
   criadaEm     DateTime           @default(now())
   finalizadaEm DateTime?
 
-  cliente   Cliente                     @relation(fields: [clienteId], references: [id])
-  veiculo   Veiculo                     @relation(fields: [veiculoId], references: [id])
+  cliente   Cliente?                     @relation(fields: [clienteId], references: [id])
+  veiculo   Veiculo?                     @relation(fields: [veiculoId], references: [id])
   itens     ItemOrdemServico[]
   historico OrdemServicoStatusHistorico[]
 
