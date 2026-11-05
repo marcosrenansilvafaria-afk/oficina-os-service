@@ -6,13 +6,16 @@ Serviço — nenhum outro serviço acessa o banco deste microsserviço
 diretamente. Participa do Saga Pattern coreografado publicando/consumindo
 eventos via a infraestrutura de mensageria do `oficina-messaging-infra`.
 
-| Repositório | Papel |
-|---|---|
-| [oficina-messaging-infra](https://github.com/marcosrenansilvafaria-afk/oficina-messaging-infra) | Broker SNS/SQS FIFO + contratos de evento do Saga |
-| [oficina-db-infrastructure](https://github.com/marcosrenansilvafaria-afk/oficina-db-infrastructure) | RDS PostgreSQL compartilhada (este serviço usa um database próprio nela) |
-| [oficina-k8s-infrastructure](https://github.com/marcosrenansilvafaria-afk/oficina-k8s-infrastructure) | Cluster EKS (destruído no momento — ver seção Deploy) |
-| **oficina-os-service** (este) | Microsserviço de Ordem de Serviço |
-| oficina-app | Monolito original da Fase 2/3 — ainda em operação, não afetado por esta sprint |
+| # | Repositório | Responsabilidade |
+|---|---|---|
+| 1 | [oficina-db-infrastructure](https://github.com/marcosrenansilvafaria-afk/oficina-db-infrastructure) | RDS PostgreSQL (compartilhada, este serviço usa um database próprio nela) |
+| 2 | [oficina-lambda-auth](https://github.com/marcosrenansilvafaria-afk/oficina-lambda-auth) | Autenticação por CPF + JWT (Lambda + API Gateway) |
+| 3 | [oficina-k8s-infrastructure](https://github.com/marcosrenansilvafaria-afk/oficina-k8s-infrastructure) | Cluster EKS compartilhado (destruído no momento — ver seção Deploy) |
+| 4 | [oficina-app](https://github.com/marcosrenansilvafaria-afk/oficina-app) | Hub de documentação, dashboards de observabilidade, Saga E2E |
+| 5 | [oficina-messaging-infra](https://github.com/marcosrenansilvafaria-afk/oficina-messaging-infra) | Broker SNS/SQS FIFO + contratos de evento do Saga |
+| 6 | **oficina-os-service** (este) | Microsserviço de Ordem de Serviço |
+| 7 | [oficina-billing-service](https://github.com/marcosrenansilvafaria-afk/oficina-billing-service) | Microsserviço de orçamento/pagamento |
+| 8 | [oficina-execution-service](https://github.com/marcosrenansilvafaria-afk/oficina-execution-service) | Microsserviço de fila de produção/execução |
 
 ## Sumário
 
@@ -122,6 +125,18 @@ docker-compose up --build
 Sobe um Postgres local (porta `5433`, para não colidir com o do
 `oficina-app`) + a API em `http://localhost:3001`. Migrations rodam
 automaticamente no boot.
+
+## Endpoints HTTP
+
+| Recurso | Base path | Principais rotas |
+|---|---|---|
+| Ordem de Serviço | `/os` | `POST /os`, `POST /os/:id/item`, `POST /os/:id/orcamento`, `POST /os/:id/aprovar`, `POST /os/:id/executar`, `POST /os/:id/finalizar`, `POST /os/:id/entregar`, `GET /os/:id`, `GET /os/:id/status`, `GET /os`, `GET /os/sla-atendimento` |
+| Clientes | `/clientes` | `POST /clientes`, `GET /clientes/:id`, `GET /clientes` |
+| Veículos | `/veiculos` | `POST /veiculos`, `GET /veiculos/:id`, `GET /veiculos` |
+| Serviços (catálogo) | `/servicos` | `POST /servicos`, `GET /servicos/:id`, `GET /servicos` |
+| Peças (catálogo) | `/pecas` | `POST /pecas`, `GET /pecas/:id`, `GET /pecas`, `PATCH /pecas/:id/estoque` |
+
+Lista completa, com schemas de request/response, no Swagger.
 
 ## Swagger / OpenAPI
 
