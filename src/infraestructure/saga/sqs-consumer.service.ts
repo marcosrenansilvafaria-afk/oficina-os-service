@@ -125,21 +125,23 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
     const ordemServicoId =
       (payload.ordemServicoId as string | undefined) ?? correlationId;
 
+    this.logger.log({ correlationId, eventType }, 'Processando evento do Saga');
+
     switch (eventType) {
       case 'PagamentoAprovadoEvent': {
         const os = await this.aprovarOrcamento.execute(ordemServicoId);
         await historicoStatusRepo.registrar(ordemServicoId, os.getStatus());
-        return;
+        break;
       }
       case 'ExecucaoIniciadaEvent': {
         const os = await this.iniciarExecucao.execute(ordemServicoId);
         await historicoStatusRepo.registrar(ordemServicoId, os.getStatus());
-        return;
+        break;
       }
       case 'ExecucaoConcluidaEvent': {
         const os = await this.finalizarOrdem.execute(ordemServicoId);
         await historicoStatusRepo.registrar(ordemServicoId, os.getStatus());
-        return;
+        break;
       }
       case 'CompensarOSEvent': {
         const origemFalha = payload.origemFalha as 'PAGAMENTO' | 'EXECUCAO';
@@ -148,10 +150,16 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
           origemFalha,
         );
         await historicoStatusRepo.registrar(ordemServicoId, os.getStatus());
-        return;
+        break;
       }
       default:
         this.logger.warn(`Evento do Saga nao reconhecido: ${eventType}`);
+        return;
     }
+
+    this.logger.log(
+      { correlationId, eventType },
+      'Evento do Saga processado com sucesso',
+    );
   }
 }

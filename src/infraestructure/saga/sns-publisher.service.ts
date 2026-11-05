@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { Logger } from '@nestjs/common';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { SagaPublisher } from '../../application/ports/saga-publisher';
 
@@ -9,6 +10,7 @@ import { SagaPublisher } from '../../application/ports/saga-publisher';
  * MessageDeduplicationId = eventId evita duplicacao em caso de retry.
  */
 export class SnsPublisherService implements SagaPublisher {
+  private readonly logger = new Logger(SnsPublisherService.name);
   private readonly client: SNSClient;
 
   constructor(
@@ -52,6 +54,11 @@ export class SnsPublisherService implements SagaPublisher {
           },
         },
       }),
+    );
+
+    this.logger.log(
+      { correlationId, eventType, eventId },
+      'Evento do Saga publicado',
     );
   }
 }
