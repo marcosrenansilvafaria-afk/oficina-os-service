@@ -152,6 +152,16 @@ incluindo as duas que agora publicam eventos do Saga) — não estão
 incluídos no gate de 80% de `test:cov:critical`, mesmo critério já adotado
 no `oficina-app`.
 
+## Simulação E2E do Saga (Sprint 5)
+
+Os testes acima validam este serviço isoladamente. A validação do Saga
+coreografado **entre os 3 microsserviços reais** (publicando/consumindo
+no SNS/SQS FIFO real, não um emulador) vive em
+[`oficina-app/test/saga-e2e/`](https://github.com/marcosrenansilvafaria-afk/oficina-app/tree/main/test/saga-e2e)
+— veja o README daquela suíte para pré-requisitos e instruções
+(`docker compose -f docker-compose.saga-e2e.yml up` + `npm run test:saga-e2e`,
+executado a partir do `oficina-app`).
+
 ## Qualidade de código (SonarQube)
 
 `sonar-project.properties` já configurado (projectKey `oficina-os-service`).
