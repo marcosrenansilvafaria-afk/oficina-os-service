@@ -120,8 +120,8 @@ export class OrdemServico {
   // 🔹 Reconstitui a entidade a partir de dados de persistência (sem passar pela máquina de estados)
   static reconstitute(
     id: string,
-    clienteId: string,
-    veiculoId: string,
+    clienteId: string | undefined,
+    veiculoId: string | undefined,
     status: StatusOrdemServico,
     itens: ItemOrdemServico[],
     valorTotal: number,

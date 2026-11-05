@@ -21,8 +21,8 @@ export class PrismaOrdemRepository implements IOrdemRepository {
       },
       create: {
         id: ordem.id,
-        clienteId: ordem.clienteId!,
-        veiculoId: ordem.veiculoId!,
+        clienteId: ordem.clienteId ?? null,
+        veiculoId: ordem.veiculoId ?? null,
         status: ordem.getStatus(),
         valorTotal: ordem.getValorTotal(),
         criadaEm: ordem.getCriadaEm(),
@@ -76,8 +76,8 @@ export class PrismaOrdemRepository implements IOrdemRepository {
 
   private toEntity(record: {
     id: string;
-    clienteId: string;
-    veiculoId: string;
+    clienteId: string | null;
+    veiculoId: string | null;
     status: string;
     valorTotal: number;
     criadaEm: Date;
@@ -101,8 +101,8 @@ export class PrismaOrdemRepository implements IOrdemRepository {
 
     return OrdemServico.reconstitute(
       record.id,
-      record.clienteId,
-      record.veiculoId,
+      record.clienteId ?? undefined,
+      record.veiculoId ?? undefined,
       record.status as StatusOrdemServico,
       itens,
       record.valorTotal,

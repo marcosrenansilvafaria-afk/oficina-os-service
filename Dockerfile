@@ -31,6 +31,13 @@ COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod +x ./docker-entrypoint.sh
 
+# `prisma` (CLI) e um devDependency - "npm ci --omit=dev" nao o instala
+# aqui. O entrypoint roda "npx prisma migrate deploy", que entao tenta
+# instalar o pacote por conta propria em node_modules - sem isso, o
+# usuario sem privilegios abaixo nao tem permissao de escrita no
+# diretorio (criado pelo root no passo anterior) e a migration falha.
+RUN chown -R appuser:appgroup /app
+
 USER appuser
 
 EXPOSE 3000
