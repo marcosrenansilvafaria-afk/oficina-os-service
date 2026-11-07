@@ -57,9 +57,8 @@ jobs:
     name: SonarQube Scan
     needs: lint-test
     runs-on: ubuntu-latest
-    # Pendencia: ainda nao existe conta SonarCloud/servidor SonarQube para
-    # este projeto (ver README). O job so roda quando o secret SONAR_TOKEN
-    # existir - ate la, aparece como "skipped", nao "failed".
+    # O job so roda quando a variavel de repositorio SONAR_ENABLED existir
+    # e for "true" - sem ela, aparece como "skipped", nao "failed".
     if: ${{ vars.SONAR_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +78,7 @@ jobs:
         run: npx prisma generate
 
       - name: Coverage (para o SonarQube consumir)
-        run: npm run test:cov:critical
+        run: npm run test:cov
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v4

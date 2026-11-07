@@ -186,11 +186,11 @@ executado a partir do `oficina-app`).
 
 ## Qualidade de código (SonarQube)
 
-`sonar-project.properties` já configurado (projectKey `oficina-os-service`).
-**Pendência**: ainda não existe conta/organização SonarCloud criada para
-este projeto. O job `sonarqube` do CI só executa quando a variável de
-repositório `SONAR_ENABLED=true` for definida (após os secrets
-`SONAR_TOKEN`/`SONAR_HOST_URL` existirem) — até lá, aparece como
+Scan automático a cada push/PR via [SonarCloud](https://sonarcloud.io)
+(`sonar-project.properties`, projectKey `oficina-os-service`), com o
+relatório de cobertura do repositório inteiro (`coverage/lcov.info`). O
+job `sonarqube` do CI só executa quando a variável de repositório
+`SONAR_ENABLED=true` estiver definida — sem ela, aparece como
 **skipped**, nunca **failed**.
 
 ## Deploy no EKS
