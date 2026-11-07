@@ -146,16 +146,23 @@ Lista completa, com schemas de request/response, no Swagger.
 
 ```bash
 npm test                  # unitarios (Jest)
+npm run test:cov          # cobertura do repositorio inteiro
 npm run test:cov:critical # cobertura de domain/entities + application/use-cases, gate >= 80%
 npm run test:bdd          # BDD (jest-cucumber) - ciclo de vida completo da OS
 npm run test:e2e          # end-to-end (supertest)
 ```
 
-Evidência de cobertura atual (`test:cov:critical`): **98,38%** statements /
-**92,3%** branches / **100%** functions / **98,93%** lines — acima do
-mínimo de 80% exigido, cobrindo `domain/entities` e
-`application/use-cases` (inclui `compensarExecucao()` e
-`CompensarOrdemServico`, novos nesta sprint).
+Evidência de cobertura crítica (`test:cov:critical`, `domain/entities` +
+`application/use-cases`): **98,38%** statements / **92,3%** branches /
+**100%** functions / **98,93%** lines.
+
+Evidência de cobertura **do repositório inteiro** (`test:cov`): **95,59%**
+statements / **86,18%** branches / **96,44%** functions / **95,66%**
+lines — acima do mínimo de 80% exigido em qualquer uma das duas métricas.
+Excluídos da medição: código gerado pelo Prisma Client
+(`src/generated/prisma/`), `main.ts` e `*.module.ts` (wiring puro, sem
+lógica de negócio) — mesmo critério usado para delimitar o gate crítico
+acima.
 
 BDD (`test/bdd/ciclo-vida-ordem-servico.feature`, 3 cenários): fluxo feliz
 completo (criação → diagnóstico → orçamento → `PagamentoAprovadoEvent` →
