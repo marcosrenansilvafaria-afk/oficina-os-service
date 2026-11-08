@@ -153,6 +153,9 @@ jobs:
       - name: Verificar namespace
         run: kubectl get namespace oficina
 
+      - name: Aplicar ServiceAccount (IRSA)
+        run: kubectl apply -f k8s/00-service-account.yaml
+
       - name: Aplicar ConfigMap (com endpoint do RDS e do Saga)
         env:
           db_host: ${{ secrets.DB_HOST }}
