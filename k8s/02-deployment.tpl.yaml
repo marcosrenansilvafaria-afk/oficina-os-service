@@ -15,6 +15,7 @@ spec:
       labels:
         app: oficina-os-service
     spec:
+      serviceAccountName: oficina-os-service
       containers:
         - name: api
           image: "${image_registry}oficina-os-service:${image_tag}"
